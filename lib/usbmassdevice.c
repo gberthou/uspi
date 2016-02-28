@@ -184,7 +184,7 @@ typedef struct TSCSIWrite10
 }
 PACKED TSCSIWrite10;
 
-static unsigned s_nDeviceNumber = 1;
+static unsigned s_nDeviceNumber;
 
 static const char FromUmsd[] = "umsd";
 
@@ -194,6 +194,11 @@ int USBBulkOnlyMassStorageDeviceCommand (TUSBBulkOnlyMassStorageDevice *pThis,
 					 void *pCmdBlk, unsigned nCmdBlkLen,
 					 void *pBuffer, unsigned nBufLen, boolean bIn);
 int USBBulkOnlyMassStorageDeviceReset (TUSBBulkOnlyMassStorageDevice *pThis);
+
+void USBBulkOnlyMassStorageDeviceStaticInit(void)
+{
+	s_nDeviceNumber = 1;
+}
 
 void USBBulkOnlyMassStorageDevice (TUSBBulkOnlyMassStorageDevice *pThis, TUSBDevice *pDevice)
 {

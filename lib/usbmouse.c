@@ -25,12 +25,17 @@
 #include <uspi/assert.h>
 #include <uspios.h>
 
-static unsigned s_nDeviceNumber = 1;
+static unsigned s_nDeviceNumber;
 
 static const char FromUSBKbd[] = "umouse";
 
 static boolean USBMouseDeviceStartRequest (TUSBMouseDevice *pThis);
 static void USBMouseDeviceCompletionRoutine (TUSBRequest *pURB, void *pParam, void *pContext);
+
+void USBMouseDeviceStaticInit(void)
+{
+	s_nDeviceNumber = 1;
+}
 
 void USBMouseDevice (TUSBMouseDevice *pThis, TUSBDevice *pDevice)
 {

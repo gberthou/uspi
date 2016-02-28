@@ -73,13 +73,51 @@
 #define HID_ITEM_VARIABLE 0x2
 #define HID_ITEM_RELATIVE 0x4
 
-static unsigned s_nDeviceNumber = 1;
+static unsigned s_nDeviceNumber;
+static u8 ps3writeBuf[48];
+static u8 ps3leds[5];
 
 static const char FromUSBPad[] = "usbpad";
 
 static boolean USBGamePadDeviceStartRequest (TUSBGamePadDevice *pThis);
 static void USBGamePadDeviceCompletionRoutine (TUSBRequest *pURB, void *pParam, void *pContext);
 static void USBGamePadDevicePS3Configure (TUSBGamePadDevice *pThis);
+
+void USBGamePadStaticInit(void)
+{
+    const u8 writeBuf[] =
+    {
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0x27, 0x10, 0x00, 0x32,
+            0xff, 0x27, 0x10, 0x00, 0x32,
+            0xff, 0x27, 0x10, 0x00, 0x32,
+            0xff, 0x27, 0x10, 0x00, 0x32,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00
+    };
+
+    const u8 leds[] =
+    {
+        0x00, // OFF
+        0x01, // LED1
+        0x02, // LED2
+        0x04, // LED3
+        0x08, // LED4
+    };
+
+	unsigned int i;
+
+	s_nDeviceNumber = 1;
+
+	for(i = 0; i < 48; ++i)
+		ps3writeBuf[i] = writeBuf[i];
+
+	for(i = 0; i < 5; ++i)
+		ps3leds[i] = leds[i];
+}
 
 void USBGamePadDevice (TUSBGamePadDevice *pThis, TUSBDevice *pDevice)
 {
@@ -537,29 +575,6 @@ void USBGamePadDeviceGetReport (TUSBGamePadDevice *pThis)
 
 void USBGamePadDevicePS3Configure (TUSBGamePadDevice *pThis)
 {
-    static u8 writeBuf[] =
-    {
-            0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00,
-            0xff, 0x27, 0x10, 0x00, 0x32,
-            0xff, 0x27, 0x10, 0x00, 0x32,
-            0xff, 0x27, 0x10, 0x00, 0x32,
-            0xff, 0x27, 0x10, 0x00, 0x32,
-            0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00
-    };
-
-    static u8 leds[] =
-    {
-        0x00, // OFF
-        0x01, // LED1
-        0x02, // LED2
-        0x04, // LED3
-        0x08, // LED4
-    };
-
     /* Special PS3 Controller enable commands */
     pThis->m_pReportBuffer[0] = 0x42;
     pThis->m_pReportBuffer[1] = 0x0c;
@@ -573,11 +588,11 @@ void USBGamePadDevicePS3Configure (TUSBGamePadDevice *pThis)
                            pThis->m_pReportBuffer, 4);
 
     /* Turn on LED */
-    writeBuf[9] |= (u8)(leds[pThis->m_nDeviceIndex] << 1);
+    ps3writeBuf[9] |= (u8)(ps3leds[pThis->m_nDeviceIndex] << 1);
     DWHCIDeviceControlMessage (USBDeviceGetHost (&pThis->m_USBDevice),
                            USBDeviceGetEndpoint0 (&pThis->m_USBDevice),
                            REQUEST_OUT | REQUEST_CLASS | REQUEST_TO_INTERFACE,
                            SET_REPORT, (REPORT_TYPE_OUTPUT << 8) | 0x01,
                            pThis->m_ucInterfaceNumber,
-                           writeBuf, 48);
+                           ps3writeBuf, 48);
 }

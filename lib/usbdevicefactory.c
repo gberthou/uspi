@@ -97,6 +97,9 @@ TUSBDevice *GetDevice (TUSBDevice *pParent, TString *pName)
         USBGamePadDevice (pDevice, pParent);
         pResult = (TUSBDevice *) pDevice;
     }
+    else if (StringCompare (pName, "ven45e-28e") == 0) // XBox 360 controller
+    {
+    }
 	// new devices follow
 
 	if (pResult != 0)

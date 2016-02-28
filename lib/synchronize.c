@@ -24,8 +24,13 @@
 #define	EnableInterrupts()	__asm volatile ("cpsie i")
 #define	DisableInterrupts()	__asm volatile ("cpsid i")
 
-static volatile unsigned s_nCriticalLevel = 0;
+static volatile unsigned s_nCriticalLevel;
 static volatile boolean s_bWereEnabled;
+
+void SynchronizationStaticInit(void)
+{
+	s_nCriticalLevel = 0;
+}
 
 void uspi_EnterCritical (void)
 {

@@ -37,7 +37,12 @@ void USBDeviceSetAddress (TUSBDevice *pThis, u8 ucAddress);
 
 static const char FromDevice[] = "usbdev";
 
-static u8 s_ucNextAddress = USB_FIRST_DEDICATED_ADDRESS;
+static u8 s_ucNextAddress;
+
+void USBDeviceStaticInit(void)
+{
+	s_ucNextAddress = USB_FIRST_DEDICATED_ADDRESS;
+}
 
 void USBDevice (TUSBDevice *pThis, struct TDWHCIDevice *pHost, TUSBSpeed Speed, u8 ucHubAddress, u8 ucHubPortNumber)
 {

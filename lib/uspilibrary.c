@@ -27,10 +27,35 @@
 
 static const char FromUSPi[] = "uspi";
 
-static TUSPiLibrary *s_pLibrary = 0;
+static TUSPiLibrary *s_pLibrary;
+
+void DeviceNameServiceStaticInit(void);
+void SMSC951xStaticInit(void);
+void SynchronizationStaticInit(void);
+void USBDeviceStaticInit(void);
+void USBGamePadStaticInit(void);
+void USBKeyboardDeviceStaticInit(void);
+void USBBulkOnlyMassStorageDeviceStaticInit(void);
+void USBMouseDeviceStaticInit(void);
+
+static void USPiStaticInit(void)
+{
+	s_pLibrary = 0;
+
+	DeviceNameServiceStaticInit();
+	SMSC951xStaticInit();
+	SynchronizationStaticInit();
+	USBDeviceStaticInit();
+	USBGamePadStaticInit();
+	USBKeyboardDeviceStaticInit();
+	USBBulkOnlyMassStorageDeviceStaticInit();
+	USBMouseDeviceStaticInit();
+}
 
 int USPiInitialize (void)
 {
+	USPiStaticInit();
+
 	assert (s_pLibrary == 0);
 	s_pLibrary = (TUSPiLibrary *) malloc (sizeof (TUSPiLibrary));
 	assert (s_pLibrary != 0);

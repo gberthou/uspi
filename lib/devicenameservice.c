@@ -22,7 +22,12 @@
 #include <uspi/assert.h>
 #include <uspios.h>
 
-static TDeviceNameService *s_pThis = 0;
+static TDeviceNameService *s_pThis;
+
+void DeviceNameServiceStaticInit(void)
+{
+	s_pThis = 0;
+}
 
 void DeviceNameService (TDeviceNameService *pThis)
 {

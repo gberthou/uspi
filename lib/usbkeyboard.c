@@ -31,7 +31,7 @@
 #define REPEAT_DELAY		MSEC2HZ (400)
 #define REPEAT_RATE		MSEC2HZ (80)
 
-static unsigned s_nDeviceNumber = 1;
+static unsigned s_nDeviceNumber;
 
 static const char FromUSBKbd[] = "usbkbd";
 
@@ -43,6 +43,11 @@ static u8 USBKeyboardDeviceGetKeyCode (TUSBKeyboardDevice *pThis);
 #ifdef REPEAT_ENABLE
 static void USBKeyboardDeviceTimerHandler (unsigned hTimer, void *pParam, void *pContext);
 #endif
+
+void USBKeyboardDeviceStaticInit(void)
+{
+	s_nDeviceNumber = 1;
+}
 
 void USBKeyboardDevice (TUSBKeyboardDevice *pThis, TUSBDevice *pDevice)
 {
