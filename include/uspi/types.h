@@ -20,6 +20,11 @@
 #ifndef _uspi_types_h
 #define _uspi_types_h
 
+typedef int		boolean;
+#define FALSE		0
+#define TRUE		1
+
+#ifdef COMPILE_USPI
 typedef unsigned char		u8;
 typedef unsigned short		u16;
 typedef unsigned int		u32;
@@ -29,11 +34,20 @@ typedef char                s8;
 typedef short               s16;
 typedef int                 s32;
 
-typedef int		boolean;
-#define FALSE		0
-#define TRUE		1
-
 typedef unsigned long	size_t;
 typedef long		ssize_t;
+#else
+#include <sys/types.h>
+#include <stddef.h>
+
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+typedef int8_t  s8;
+typedef int16_t s16;
+typedef int32_t s32;
+#endif
 
 #endif

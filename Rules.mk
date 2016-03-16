@@ -25,7 +25,8 @@ endif
 -include $(USPIHOME)/Config.mk
 
 RASPPI	?= 1
-PREFIX	?= arm-linux-gnueabihf-
+#PREFIX	?= arm-linux-gnueabihf-
+PREFIX	?= arm-none-eabi-
 
 CC	= $(PREFIX)gcc
 AS	= $(CC)
@@ -40,7 +41,8 @@ endif
 
 AFLAGS	+= $(ARCH) -DRASPPI=$(RASPPI)
 CFLAGS	+= $(ARCH) -Wall -Wno-psabi -fsigned-char -fno-builtin -nostdinc -nostdlib \
-	   -std=gnu99 -undef -DRASPPI=$(RASPPI) -I $(USPIHOME)/include -O #-DNDEBUG
+	   -std=gnu99 -undef -DRASPPI=$(RASPPI) -I $(USPIHOME)/include -O \
+	   -DCOMPILE_USPI -DNDEBUG
 
 %.o: %.S
 	$(AS) $(AFLAGS) -c -o $@ $<
