@@ -243,7 +243,7 @@ static void USBGamePadDeviceDecodeReportXBox360Wired(TUSBGamePadDevice *pThis)
     if(   (pReportBuffer[0] & 0xfe) == 0 // Message type (0 or 1)
        && pReportBuffer[1] == 20) // Packet size
     {
-        pState->naxes    = 3;
+        pState->naxes    = 6;
         pState->nhats    = 1;
         pState->nbuttons = 11;
 
@@ -257,8 +257,9 @@ static void USBGamePadDeviceDecodeReportXBox360Wired(TUSBGamePadDevice *pThis)
                                                         // indices 4-5
                         | (((pReportBuffer[2] >> 5) & 1) << 6) // Back
                         | (((pReportBuffer[2] >> 4) & 1) << 7) // Start
-                        | ((pReportBuffer[2] >> 6) << 8); // Left stick and
-                                                          // Right stick
+                        | ((pReportBuffer[2] >> 6) << 8) // Left stick and
+                                                         // Right stick
+                        | (((pReportBuffer[3] >> 2) & 1) << 10); // Xbox button
 
         // Axes
         // Left  stick X, Left  stick Y
@@ -282,8 +283,8 @@ static void USBGamePadDeviceDecodeReportXBox360Wired(TUSBGamePadDevice *pThis)
         {
             int tmp;
 
-            pState->axes[i + 4].minimum = ~0x7f;
-            pState->axes[i + 4].maximum = 0x7f;
+            pState->axes[i + 4].minimum = 0x00;
+            pState->axes[i + 4].maximum = 0xff;
 
             tmp = pReportBuffer[i + 4]; // Unsigned values
             pState->axes[i + 4].value = tmp;
