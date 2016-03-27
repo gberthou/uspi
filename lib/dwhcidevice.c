@@ -860,9 +860,10 @@ void DWHCIDeviceStartChannel (TDWHCIDevice *pThis, TDWHCITransferStageData *pSta
 			DWHCITransferStageDataGetDMAAddress (pStageData) + GPU_MEM_BASE);
 	DWHCIRegisterWrite (&DMAAddress);
 
-	uspi_CleanAndInvalidateDataCacheRange (DWHCITransferStageDataGetDMAAddress (pStageData),
+	/*uspi_CleanAndInvalidateDataCacheRange (DWHCITransferStageDataGetDMAAddress (pStageData),
 					       DWHCITransferStageDataGetBytesToTransfer (pStageData));
-	DataMemBarrier ();
+*/
+    DataMemBarrier ();
 
 	// set split control
 	TDWHCIRegister SplitControl;
@@ -968,9 +969,10 @@ void DWHCIDeviceChannelInterruptHandler (TDWHCIDevice *pThis, unsigned nChannel)
 		return;
 
 	case StageSubStateWaitForTransactionComplete: {
-		uspi_CleanAndInvalidateDataCacheRange (DWHCITransferStageDataGetDMAAddress (pStageData),
+		/*uspi_CleanAndInvalidateDataCacheRange (DWHCITransferStageDataGetDMAAddress (pStageData),
 						       DWHCITransferStageDataGetBytesToTransfer (pStageData));
-		DataMemBarrier ();
+        */
+        DataMemBarrier ();
 
 		TDWHCIRegister TransferSize;
 		DWHCIRegister (&TransferSize, DWHCI_HOST_CHAN_XFER_SIZ (nChannel));
@@ -1011,7 +1013,7 @@ void DWHCIDeviceChannelInterruptHandler (TDWHCIDevice *pThis, unsigned nChannel)
 		nStatus = DWHCITransferStageDataGetTransactionStatus (pStageData);
 		if (nStatus & DWHCI_HOST_CHAN_INT_ERROR_MASK)
 		{
-			LogWrite (FromDWHCI, LOG_ERROR, "Transaction failed (status 0x%X)", nStatus);
+			LogWrite (FromDWHCI, LOG_ERROR, "Transaction failed1 (status 0x%X)", nStatus);
 
 			USBRequestSetStatus (pURB, 0);
 		}
@@ -1053,7 +1055,7 @@ void DWHCIDeviceChannelInterruptHandler (TDWHCIDevice *pThis, unsigned nChannel)
 		    || (nStatus & DWHCI_HOST_CHAN_INT_NAK)
 		    || (nStatus & DWHCI_HOST_CHAN_INT_NYET))
 		{
-			LogWrite (FromDWHCI, LOG_ERROR, "Transaction failed (status 0x%X)", nStatus);
+			LogWrite (FromDWHCI, LOG_ERROR, "Transaction failed2 (status 0x%X)", nStatus);
 
 			USBRequestSetStatus (pURB, 0);
 
@@ -1086,7 +1088,7 @@ void DWHCIDeviceChannelInterruptHandler (TDWHCIDevice *pThis, unsigned nChannel)
 		nStatus = DWHCITransferStageDataGetTransactionStatus (pStageData);
 		if (nStatus & DWHCI_HOST_CHAN_INT_ERROR_MASK)
 		{
-			LogWrite (FromDWHCI, LOG_ERROR, "Transaction failed (status 0x%X)", nStatus);
+			LogWrite (FromDWHCI, LOG_ERROR, "Transaction failed3 (status 0x%X)", nStatus);
 
 			USBRequestSetStatus (pURB, 0);
 

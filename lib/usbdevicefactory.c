@@ -90,15 +90,13 @@ TUSBDevice *GetDevice (TUSBDevice *pParent, TString *pName)
 		SMSC951xDevice (pDevice, pParent);
 		pResult = (TUSBDevice *) pDevice;
 	}
-    else if (StringCompare (pName, "int3-0-0") == 0)
+    else if (StringCompare (pName, "int3-0-0") == 0
+          || StringCompare (pName, "ven45e-28e") == 0) // XBox 360 controller
     {
         TUSBGamePadDevice *pDevice = (TUSBGamePadDevice *) malloc (sizeof (TUSBGamePadDevice));
         assert (pDevice != 0);
         USBGamePadDevice (pDevice, pParent);
         pResult = (TUSBDevice *) pDevice;
-    }
-    else if (StringCompare (pName, "ven45e-28e") == 0) // XBox 360 controller
-    {
     }
 	// new devices follow
 

@@ -93,6 +93,14 @@ void uspi_CleanAndInvalidateDataCacheRange (u32 nAddress, u32 nLength)
 	}
 }
 
+/*
+void uspi_CleanAndInvalidateDataCacheRange (u32 nAddress, u32 nLength)
+{
+    // Clean and invalidate entire data cache
+    __asm__ volatile("mcr p15, 0, %0, c7, c14, 0" :: "r"(0));
+}
+*/
+
 #else
 
 //

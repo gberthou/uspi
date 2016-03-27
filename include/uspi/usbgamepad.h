@@ -28,10 +28,19 @@
 #include <uspi/types.h>
 #include <uspi.h>
 
+typedef enum TUSBGamePadDeviceType
+{
+    GAMEPAD_HID,
+    GAMEPAD_PS3,
+    GAMEPAD_XBOX360_WIRED
+}
+TUSBGamePadDeviceType;
+
 typedef struct TUSBGamePadDevice
 {
 	TUSBDevice m_USBDevice;
 	unsigned m_nDeviceIndex;
+    TUSBGamePadDeviceType m_type;
 
 	u8 m_ucInterfaceNumber;
 	u8 m_ucAlternateSetting;

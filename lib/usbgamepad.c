@@ -126,6 +126,7 @@ void USBGamePadDevice (TUSBGamePadDevice *pThis, TUSBDevice *pDevice)
 	USBDeviceCopy (&pThis->m_USBDevice, pDevice);
 	pThis->m_USBDevice.Configure = USBGamePadDeviceConfigure;
 
+    pThis->m_type = GAMEPAD_HID;
 	pThis->m_pEndpointIn = 0;
     pThis->m_pEndpointOut = 0;
     pThis->m_pStatusHandler = 0;
@@ -232,8 +233,72 @@ enum {
 
 #define UNDEFINED   -123456789
 
+static void USBGamePadDeviceDecodeReportXBox360Wired(TUSBGamePadDevice *pThis)
+{
+    const u8 *pReportBuffer = pThis->m_pReportBuffer;
+    const u16 *pAxesBuffer = (u16*)(pReportBuffer + 6);
+    USPiGamePadState *pState = &pThis->m_State;
+    unsigned int i;
+
+    if(   (pReportBuffer[0] & 0xfe) == 0 // Message type (0 or 1)
+       && pReportBuffer[1] == 20) // Packet size
+    {
+        pState->naxes    = 3;
+        pState->nhats    = 1;
+        pState->nbuttons = 11;
+
+        // D-Pad
+        pState->hats[0] = (pReportBuffer[2] & 0xf);
+
+        // Buttons
+        pState->buttons = (pReportBuffer[3] >> 4) // ABXY mapped onto indices
+                                                  // 0-3
+                        | ((pReportBuffer[3] & 3) << 4) // LB,RB mapped onto
+                                                        // indices 4-5
+                        | (((pReportBuffer[2] >> 5) & 1) << 6) // Back
+                        | (((pReportBuffer[2] >> 4) & 1) << 7) // Start
+                        | ((pReportBuffer[2] >> 6) << 8); // Left stick and
+                                                          // Right stick
+
+        // Axes
+        // Left  stick X, Left  stick Y
+        // Right stick X, Right stick Y
+        for(i = 0; i < 4; ++i)
+        {
+            int tmp;
+
+            pState->axes[i].minimum = ~0x7fff;
+            pState->axes[i].maximum = 0x7fff;
+
+            tmp = *pAxesBuffer++;
+            if(tmp & (1 << 15)) // Negative value
+                tmp |= 0xffff0000;
+            pState->axes[i].value = tmp;
+        }
+
+        // Axes
+        // Left trigger, Right trigger
+        for(i = 0; i < 2; ++i)
+        {
+            int tmp;
+
+            pState->axes[i + 4].minimum = ~0x7f;
+            pState->axes[i + 4].maximum = 0x7f;
+
+            tmp = pReportBuffer[i + 4]; // Unsigned values
+            pState->axes[i + 4].value = tmp;
+        }
+    }
+}
+
 static void USBGamePadDeviceDecodeReport(TUSBGamePadDevice *pThis)
 {
+    if(pThis->m_type == GAMEPAD_XBOX360_WIRED)
+    {
+        USBGamePadDeviceDecodeReportXBox360Wired(pThis);
+        return;
+    }
+
     s32 item, arg;
     u32 offset = 0, size = 0, count = 0;
     s32 lmax = UNDEFINED, lmin = UNDEFINED, pmin = UNDEFINED, pmax = UNDEFINED;
@@ -376,6 +441,17 @@ boolean USBGamePadDeviceConfigure (TUSBDevice *pUSBDevice)
 {
 	TUSBGamePadDevice *pThis = (TUSBGamePadDevice *) pUSBDevice;
 	assert (pThis != 0);
+    
+    if (   pUSBDevice->m_pDeviceDesc->idVendor == 0x054c
+        && pUSBDevice->m_pDeviceDesc->idProduct == 0x0268)
+    {
+        pThis->m_type = GAMEPAD_PS3;
+    }
+    else if(   pUSBDevice->m_pDeviceDesc->idVendor == 0x045e
+            && pUSBDevice->m_pDeviceDesc->idProduct == 0x028e)
+    {
+        pThis->m_type = GAMEPAD_XBOX360_WIRED;
+    }
 
 	TUSBConfigurationDescriptor *pConfDesc =
 		(TUSBConfigurationDescriptor *) USBDeviceGetDescriptor (&pThis->m_USBDevice, DESCRIPTOR_CONFIGURATION);
@@ -387,13 +463,20 @@ boolean USBGamePadDeviceConfigure (TUSBDevice *pUSBDevice)
 		return FALSE;
 	}
 
+    //pUSBDevice->m_pConfigDesc = pConfDesc;
+
     TUSBInterfaceDescriptor *pInterfaceDesc =
         (TUSBInterfaceDescriptor *) USBDeviceGetDescriptor (&pThis->m_USBDevice, DESCRIPTOR_INTERFACE);
     if (   pInterfaceDesc == 0
         || pInterfaceDesc->bNumEndpoints      <  1
-        || pInterfaceDesc->bInterfaceClass    != 0x03   // HID Class
-        || pInterfaceDesc->bInterfaceSubClass != 0x00   // Boot Interface Subclass
-        || pInterfaceDesc->bInterfaceProtocol != 0x00)  // GamePad
+        || (pThis->m_type != GAMEPAD_XBOX360_WIRED &&
+            (pInterfaceDesc->bInterfaceClass    != 0x03   // HID Class
+          || pInterfaceDesc->bInterfaceSubClass != 0x00   // Boot Interface Subclass
+          || pInterfaceDesc->bInterfaceProtocol != 0x00)) // GamePad
+        || (pThis->m_type == GAMEPAD_XBOX360_WIRED &&
+            (pInterfaceDesc->bInterfaceClass != 0xff        // Vendor Class
+             || pInterfaceDesc->bInterfaceSubClass != 0x5d
+             || pInterfaceDesc->bInterfaceProtocol != 0x01)))  // GamePad
     {
         USBDeviceConfigurationError (&pThis->m_USBDevice, FromUSBPad);
 
@@ -403,13 +486,17 @@ boolean USBGamePadDeviceConfigure (TUSBDevice *pUSBDevice)
     pThis->m_ucInterfaceNumber  = pInterfaceDesc->bInterfaceNumber;
     pThis->m_ucAlternateSetting = pInterfaceDesc->bAlternateSetting;
 
-    TUSBHIDDescriptor *pHIDDesc = (TUSBHIDDescriptor *) USBDeviceGetDescriptor (&pThis->m_USBDevice, DESCRIPTOR_HID);
-    if (   pHIDDesc == 0
-        || pHIDDesc->wReportDescriptorLength == 0)
+    TUSBHIDDescriptor *pHIDDesc = 0;
+    if(pThis->m_type != GAMEPAD_XBOX360_WIRED)
     {
-        USBDeviceConfigurationError (&pThis->m_USBDevice, FromUSBPad);
+        pHIDDesc = (TUSBHIDDescriptor *) USBDeviceGetDescriptor (&pThis->m_USBDevice, DESCRIPTOR_HID);
+        if (   pHIDDesc == 0
+            || pHIDDesc->wReportDescriptorLength == 0)
+        {
+            USBDeviceConfigurationError (&pThis->m_USBDevice, FromUSBPad);
 
-        return FALSE;
+            return FALSE;
+        }
     }
 
     const TUSBEndpointDescriptor *pEndpointDesc;
@@ -446,31 +533,40 @@ boolean USBGamePadDeviceConfigure (TUSBDevice *pUSBDevice)
         }
     }
 
-	if (pThis->m_pEndpointIn == 0)
+	if (pThis->m_pEndpointIn == 0
+        || (pThis->m_type == GAMEPAD_XBOX360_WIRED && pThis->m_pEndpointOut == 0
+    ))
 	{
 		USBDeviceConfigurationError (&pThis->m_USBDevice, FromUSBPad);
 
 		return FALSE;
 	}
 
-    pThis->m_usReportDescriptorLength = pHIDDesc->wReportDescriptorLength;
-    pThis->m_pHIDReportDescriptor = (unsigned char *) malloc(pHIDDesc->wReportDescriptorLength);
-    assert (pThis->m_pHIDReportDescriptor != 0);
-
-    if (DWHCIDeviceGetDescriptor (USBDeviceGetHost (&pThis->m_USBDevice),
-                    USBDeviceGetEndpoint0 (&pThis->m_USBDevice),
-                    pHIDDesc->bReportDescriptorType, DESCRIPTOR_INDEX_DEFAULT,
-                    pThis->m_pHIDReportDescriptor, pHIDDesc->wReportDescriptorLength, REQUEST_IN)
-        != pHIDDesc->wReportDescriptorLength)
+    if(pThis->m_type != GAMEPAD_XBOX360_WIRED)
     {
-        LogWrite (FromUSBPad, LOG_ERROR, "Cannot get HID report descriptor");
+        pThis->m_usReportDescriptorLength = pHIDDesc->wReportDescriptorLength;
+        pThis->m_pHIDReportDescriptor = (unsigned char *) malloc(pHIDDesc->wReportDescriptorLength);
+        assert (pThis->m_pHIDReportDescriptor != 0);
 
-        return FALSE;
+        if (DWHCIDeviceGetDescriptor (USBDeviceGetHost (&pThis->m_USBDevice),
+                        USBDeviceGetEndpoint0 (&pThis->m_USBDevice),
+                        pHIDDesc->bReportDescriptorType, DESCRIPTOR_INDEX_DEFAULT,
+                        pThis->m_pHIDReportDescriptor, pHIDDesc->wReportDescriptorLength, REQUEST_IN)
+            != pHIDDesc->wReportDescriptorLength)
+        {
+            LogWrite (FromUSBPad, LOG_ERROR, "Cannot get HID report descriptor");
+
+            return FALSE;
+        }
+        //DebugHexdump (pThis->m_pHIDReportDescriptor, pHIDDesc->wReportDescriptorLength, "hid");
+
+        pThis->m_pReportBuffer[0] = 0;
+        USBGamePadDeviceDecodeReport (pThis);
     }
-    //DebugHexdump (pThis->m_pHIDReportDescriptor, pHIDDesc->wReportDescriptorLength, "hid");
-
-    pThis->m_pReportBuffer[0] = 0;
-    USBGamePadDeviceDecodeReport (pThis);
+    else
+    {
+        pThis->m_nReportSize = 20;
+    }
 
     if (!USBDeviceConfigure (&pThis->m_USBDevice))
     {
@@ -495,8 +591,7 @@ boolean USBGamePadDeviceConfigure (TUSBDevice *pUSBDevice)
 
     pThis->m_nDeviceIndex = s_nDeviceNumber++;
 
-    if (   pUSBDevice->m_pDeviceDesc->idVendor == 0x054c
-        && pUSBDevice->m_pDeviceDesc->idProduct == 0x0268)
+    if (pThis->m_type == GAMEPAD_PS3)
     {
         USBGamePadDevicePS3Configure (pThis);
     }
@@ -542,11 +637,13 @@ void USBGamePadDeviceCompletionRoutine (TUSBRequest *pURB, void *pParam, void *p
 	assert (pURB != 0);
 	assert (pThis->m_pURB == pURB);
 
-	if (   USBRequestGetStatus (pURB) != 0
+    if (   USBRequestGetStatus (pURB) != 0
 	    && USBRequestGetResultLength (pURB) > 0)
-	{
+    {
         //DebugHexdump (pThis->m_pReportBuffer, 16, "report");
-        if (pThis->m_pHIDReportDescriptor != 0 && pThis->m_pStatusHandler != 0)
+        if ((pThis->m_type == GAMEPAD_XBOX360_WIRED
+             || pThis->m_pHIDReportDescriptor != 0)
+            && pThis->m_pStatusHandler != 0)
         {
             USBGamePadDeviceDecodeReport (pThis);
             (*pThis->m_pStatusHandler) (pThis->m_nDeviceIndex - 1, &pThis->m_State);

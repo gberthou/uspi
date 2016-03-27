@@ -102,7 +102,6 @@ int USPiInitialize (void)
 
 		s_pLibrary->pUPAD[i] = (TUSBGamePadDevice *)
 			DeviceNameServiceGetDevice (DeviceNameServiceGet (), StringGet (&DeviceName), FALSE);
-
 		_String  (&DeviceName);
 	}
 
@@ -265,7 +264,6 @@ int USPiGamePadAvailable (void)
 void USPiGamePadRegisterStatusHandler (TGamePadStatusHandler *pStatusHandler)
 {
 	assert (s_pLibrary != 0);
-
     unsigned i;
     for (i = 0; i < MAX_DEVICES; i++)
     {
